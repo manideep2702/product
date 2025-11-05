@@ -126,7 +126,7 @@ export default function Page() {
       const params = new URLSearchParams(window.location.search);
       const next = params.get("next") || "/"; // default to home page
       try { sessionStorage.setItem("ayya.auth.next", next); } catch {}
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, "");
       const redirectTo = `${siteUrl}/auth/callback`;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -149,8 +149,8 @@ export default function Page() {
     const inputEl = document.querySelector('input[name="email"]') as HTMLInputElement | null;
     const email = inputEl?.value?.trim() || window.prompt("Enter your email for password reset") || "";
     if (!email) return;
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${siteUrl}/auth/update-password` });
+      const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, "");
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${siteUrl}/auth/update-password` });
     if (error) show({ title: "Reset failed", description: error.message, variant: "error" });
     else show({ title: "Reset link sent", description: "Check your inbox.", variant: "success" });
   };

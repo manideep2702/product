@@ -44,7 +44,7 @@ function AuthCallbackContent() {
             const alreadyRetried = sessionStorage.getItem(retryKey) === "1";
             if (!alreadyRetried) {
               sessionStorage.setItem(retryKey, "1");
-              const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+              const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, "");
               const redirectTo = `${siteUrl}/auth/callback`;
               await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo, queryParams: { prompt: "select_account" } } });
               return; // browser navigates away
@@ -195,11 +195,11 @@ function AuthCallbackContent() {
             runPostExchange();
           }
         });
-        // Safety timeout: if nothing after a few seconds, bail to sign-in
+        // Safety timeout: allow more time on first login (slow networks/new accounts)
         setTimeout(() => {
           try { sub.subscription.unsubscribe(); } catch {}
           router.replace("/sign-in");
-        }, 8000);
+        }, 30000);
         return;
       }
       await runPostExchange();

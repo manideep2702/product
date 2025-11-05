@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAlert } from "@/components/ui/alert-provider";
+import { sendEmail } from "@/lib/email";
 
 // Session label now represents a fixed time range (e.g., "12:45 PM - 1:30 PM")
 type Session = string;
@@ -62,6 +63,7 @@ function seasonForNow(now = new Date()) {
 // Extra one-off booking dates allowed outside regular season
 const EXTRA_DATES: string[] = [
   "2025-10-31",
+  "2025-11-04",
 ];
 
 function inSeason(date: Date, now = new Date()): boolean {
@@ -470,29 +472,17 @@ export default function AnnadanamBooking() {
         qty,
       });
       if (rpcErr) throw rpcErr;
-      // Send confirmation email (non-blocking but we surface errors if any)
-      try {
-        const resp = await fetch('/api/annadanam/email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: data.email,
-            name: data.name,
-            date: selectedDateKey,
-            session: slot.session,
-            qty,
-            phone: data.phone,
-          })
-        });
-        if (!resp.ok) {
-          const j = await resp.json().catch(() => ({} as any));
-          const detail = j?.error ? `: ${j.error}` : '';
-          show({ title: 'Email not sent', description: `We could not send a confirmation email${detail}`, variant: 'warning' });
-        }
-      } catch (e: any) {
-        show({ title: 'Email not sent', description: e?.message || 'Network error', variant: 'warning' });
-      }
+      // Email sending is handled by backend automations (if configured). No client call here on static hosting.
       show({ title: "Booking confirmed", description: `${slot.session} • ${selectedDateKey}`, variant: "success" });
+      // Best-effort confirmation email via Supabase Edge Function (SMTP)
+      try {
+        await sendEmail({
+          to: data.email,
+          subject: "Annadanam booking confirmed",
+          text: `Your Annadanam booking for ${selectedDateKey} (${slot.session}) has been received.`,
+          html: `<p>Your Annadanam booking for <strong>${selectedDateKey}</strong> (<strong>${slot.session}</strong>) has been received.</p>`,
+        });
+      } catch {}
       // Update UI
       await fetchSlots(selectedDateKey);
       await fetchMyBookings();

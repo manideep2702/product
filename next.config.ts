@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import path from "path";
 
 const nextConfig: NextConfig = {
+  output: "export",
+  trailingSlash: true,
   // Relax build-time checks on CI providers (Netlify/Vercel)
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
@@ -43,16 +45,8 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'www.youtube.com' },
       { protocol: 'https', hostname: 'img.youtube.com' },
       { protocol: 'https', hostname: 'lszcuaduebvabtiifhbgp.supabase.co' }
-    ]
-  }
-  ,
-  webpack: (config) => {
-    config.resolve = config.resolve || {};
-    config.resolve.alias = {
-      ...(config.resolve.alias || {}),
-      "@radix-ui/react-use-controllable-state$": path.resolve(__dirname, "src/shims/radix/use-controllable-state.ts"),
-    };
-    return config;
+    ],
+    unoptimized: true
   }
 };
 

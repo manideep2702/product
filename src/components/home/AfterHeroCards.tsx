@@ -67,7 +67,7 @@ function PrayerCard() {
           className="w-full max-w-sm"
           controls
           preload="none"
-          src={`/api/audio/${encodeURIComponent("Sreekovil-Nada-Thurannu-Jayan-Jaya-Vijaya.mp3")}`}
+          src="/Sreekovil-Nada-Thurannu-Jayan-Jaya-Vijaya.mp3"
         />
       </div>
       <div className="mt-3 flex items-center justify-end gap-2 text-neutral-500">
@@ -95,7 +95,7 @@ function AnnadanamCard() {
     return new Date(now.getFullYear(), 10, 5); // next season start (Nov 5)
   }
   const nextDate = getNextAnnadanamDate();
-  const nextDateLabel = nextDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+  const nextDateLabel = nextDate.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const rows = [
     { session: "Morning", time: "12:30 – 2:30 pm" },
     { session: "Evening", time: "8:30 – 10:00 pm" },

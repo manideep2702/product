@@ -8,7 +8,7 @@ async function pickGalleryImage(): Promise<string | undefined> {
   try {
     const files = await fs.readdir(dir);
     const pick = files.find((f) => exts.has(path.extname(f).toLowerCase()));
-    return pick ? `/api/gallery/image/${encodeURIComponent(pick)}` : undefined;
+    return pick ? `/gallery/${encodeURIComponent(pick)}` : undefined;
   } catch {
     return undefined;
   }

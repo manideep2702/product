@@ -23,7 +23,7 @@ export default function ImagesMasonry({ images }: { images: string[] }) {
     };
   }, [open]);
 
-  const srcFor = (name: string) => `/api/gallery/image/${encodeURIComponent(name)}`;
+  const srcFor = (name: string) => `/gallery/${encodeURIComponent(name)}`;
 
   return (
     <>

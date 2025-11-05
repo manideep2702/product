@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import RequireAuth from "@/components/auth/require-auth";
 import { GradientButton } from "@/components/ui/gradient-button";
 import Link from "next/link";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { sendEmail } from "@/lib/email";
 
 type Donor = { name: string; email: string; phone: string; address?: string } | null;
 
@@ -57,22 +59,62 @@ export default function DonatePayPage() {
       alert("PAN file is too large. Maximum allowed size is 5MB.");
       return;
     }
-    const fd = new FormData();
-    fd.set("name", donor.name);
-    fd.set("email", donor.email);
-    fd.set("phone", donor.phone);
-    fd.set("address", donor.address || "");
-    fd.set("amount", String(amt));
-    fd.set("screenshot", paymentShot);
-    fd.set("pan", panShot);
     setSubmitting(true);
     try {
-      const res = await fetch("/api/donations/submit", { method: "POST", body: fd });
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || "Submission failed");
-      }
+      const supabase = getSupabaseBrowserClient();
+      // Ensure user session (RequireAuth already wraps this page)
+      const { data: userRes } = await supabase.auth.getUser();
+      const user = userRes?.user;
+      if (!user?.id) throw new Error("Please sign in again.");
+
+      // Upload files to 'donations' bucket
+      const bucket = "donations";
+      const safe = (s: string) => s.replace(/[^a-zA-Z0-9_.-]+/g, "-");
+      const base = `${user.id}-${Date.now()}`;
+      const screenshotPath = `screenshots/${base}-${safe(paymentShot.name)}`;
+      const panPath = `pan/${base}-${safe(panShot.name)}`;
+      const up1 = await supabase.storage.from(bucket).upload(screenshotPath, paymentShot, { upsert: false, cacheControl: "3600", contentType: paymentShot.type || "image/png" });
+      if (up1.error) throw up1.error;
+      const up2 = await supabase.storage.from(bucket).upload(panPath, panShot, { upsert: false, cacheControl: "3600", contentType: panShot.type || "application/octet-stream" });
+      if (up2.error) throw up2.error;
+
+      // Insert donation row
+      const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+      const { error } = await supabase.from("donations").insert({
+        name: donor.name,
+        email: donor.email,
+        phone: donor.phone,
+        address: donor.address || null,
+        amount: amt,
+        storage_bucket: bucket,
+        storage_path: screenshotPath,
+        pan_bucket: bucket,
+        pan_path: panPath,
+        user_agent: ua,
+      });
+      if (error) throw error;
+
       alert(`Thank you, ${donor.name}! We received your donation details for ₹${amt}. Invoice will be shared in 3–5 days.`);
+      try {
+        await sendEmail({
+          to: donor.email.trim(),
+          subject: "Donation received",
+          text: `Dear ${donor.name}, we have received your donation of ₹${amt.toLocaleString("en-IN")}. A GST-compliant invoice will be emailed within 3–5 working days.`,
+          html: `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#111;line-height:1.6">
+            <h2 style="margin:0 0 10px">Thank you for your donation!</h2>
+            <p>Dear ${donor.name},</p>
+            <p>We have received your donation details.</p>
+            <ul>
+              <li><strong>Amount:</strong> ₹${amt.toLocaleString("en-IN")}</li>
+              <li><strong>Email:</strong> ${donor.email}</li>
+              <li><strong>Phone:</strong> ${donor.phone}</li>
+              ${donor.address ? `<li><strong>Address:</strong> ${donor.address}</li>` : ""}
+            </ul>
+            <p>We will verify the payment and share a GST-compliant invoice to your email within 3–5 working days.</p>
+            <p>Warm regards,<br/>Sree Sabari Sastha Seva Samithi</p>
+          </div>`,
+        });
+      } catch {}
       setPaidAmount("");
       setPaymentShot(null);
     } catch (err: any) {

@@ -2,7 +2,7 @@ import path from "path";
 import { promises as fs } from "fs";
 import ImagesMasonry from "@/components/gallery/ImagesMasonry";
 
-export const dynamic = "force-dynamic";
+// Static-export friendly: read at build time
 
 const exts = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif"]);
 

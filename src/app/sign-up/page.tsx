@@ -5,6 +5,7 @@ import { GradientButton } from "@/components/ui/gradient-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { CalendarDays, BookOpenText, HeartHandshake } from "lucide-react";
 
 // Simple Google mark used on auth buttons
@@ -46,14 +47,17 @@ export default function SignUpPage() {
     }
     setLoading(true);
     try {
-      const r = await fetch("/api/auth/register/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, full_name: fullName, phone, city }),
+      const supabase = getSupabaseBrowserClient();
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${siteUrl}/auth/callback`,
+          data: { full_name: fullName, name: fullName, phone, city },
+        },
       });
-      const j = await r.json();
-      if (!r.ok) {
-        setError(j?.error || "Failed to send verification code.");
+      if (error) {
+        setError(error.message || "Failed to send verification code.");
         return;
       }
       setStep("otp");
@@ -76,25 +80,20 @@ export default function SignUpPage() {
     }
     setLoading(true);
     try {
-      const r = await fetch("/api/auth/register/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code, password }),
-      });
-      const j = await r.json();
-      if (!r.ok) {
-        setError(j?.error || "Verification failed.");
-        return;
-      }
-      // Sign in the user now that account exists
-      const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
       const supabase = getSupabaseBrowserClient();
-      const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-      if (signInErr) {
-        // Fallback to sign-in page if something odd happens
-        window.location.assign("/sign-in");
+      const ver = await supabase.auth.verifyOtp({ email, token: code, type: "email" });
+      if (ver.error) {
+        setError(ver.error.message || "Verification failed.");
         return;
       }
+      // Set password after verified session exists
+      if (password) {
+        const upd = await supabase.auth.updateUser({ password });
+        if (upd.error) {
+          setInfo("Verified. You can set your password later from profile.");
+        }
+      }
+      // Redirect to profile completion
       window.location.assign("/profile/edit");
     } catch (e: any) {
       setError(e?.message || "Unexpected error");
@@ -109,14 +108,14 @@ export default function SignUpPage() {
     setInfo(null);
     setLoading(true);
     try {
-      const r = await fetch("/api/auth/register/init", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, full_name: fullName, phone, city }),
+      const supabase = getSupabaseBrowserClient();
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${siteUrl}/auth/callback` },
       });
-      const j = await r.json();
-      if (!r.ok) {
-        setError(j?.error || "Failed to resend code.");
+      if (error) {
+        setError(error.message || "Failed to resend code.");
         return;
       }
       setInfo("Code resent. Check your inbox.");
@@ -142,7 +141,7 @@ export default function SignUpPage() {
     const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
     const supabase = getSupabaseBrowserClient();
     try { sessionStorage.setItem("ayya.auth.next", "/profile/edit"); } catch {}
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
+    const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin).replace(/\/$/, "");
     const redirectTo = `${siteUrl}/auth/callback`;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",

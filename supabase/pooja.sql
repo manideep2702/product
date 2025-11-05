@@ -1,5 +1,5 @@
 -- Pooja Booking table and policies
--- Booking window: 2025-11-06 to 2026-01-07 (inclusive)
+-- Booking window: 2025-11-05 to 2026-01-07 (inclusive)
 -- Sessions: '10:30 AM', '6:30 PM'
 
 create table if not exists public."Pooja-Bookings" (
@@ -15,7 +15,9 @@ create table if not exists public."Pooja-Bookings" (
   spouse_name text not null default '' check (length(btrim(spouse_name)) > 0),
   children_names text null,
   nakshatram text not null default '' check (length(btrim(nakshatram)) > 0),
-  gothram text not null default '' check (length(btrim(gothram)) > 0)
+  gothram text not null default '' check (length(btrim(gothram)) > 0),
+  amount numeric null,
+  utr text null
 );
 
 -- Enforce booking window at the database layer as well
@@ -26,7 +28,7 @@ begin
   exception when undefined_object then null; end;
   alter table public."Pooja-Bookings"
     add constraint pooja_date_window
-    check (date between date '2025-11-06' and date '2026-01-07');
+    check (date between date '2025-11-05' and date '2026-01-07');
 end $$;
 
 -- Add/upgrade new columns if the table already existed previously
@@ -75,6 +77,16 @@ begin
     alter table public."Pooja-Bookings" drop constraint if exists pooja_gothram_nonblank;
   exception when undefined_object then null; end;
   alter table public."Pooja-Bookings" add constraint pooja_gothram_nonblank check (length(btrim(gothram)) > 0);
+
+  -- amount (optional)
+  begin
+    alter table public."Pooja-Bookings" add column if not exists amount numeric;
+  exception when duplicate_column then null; end;
+
+  -- utr (optional)
+  begin
+    alter table public."Pooja-Bookings" add column if not exists utr text;
+  exception when duplicate_column then null; end;
 end $$;
 
 alter table public."Pooja-Bookings" enable row level security;

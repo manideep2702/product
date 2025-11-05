@@ -51,23 +51,23 @@ export const Contact2 = ({
     }
     setLoading(true);
     try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName || undefined,
-          email: emailAddr,
-          phone: phoneNo || undefined,
-          subject: subject || undefined,
-          message,
-        }),
+      const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
+      const supabase = getSupabaseBrowserClient();
+      let user_id: string | null = null;
+      try {
+        const { data } = await supabase.auth.getUser();
+        user_id = data?.user?.id ?? null;
+      } catch {}
+      const { error } = await supabase.from("contact-us").insert({
+        user_id,
+        first_name: firstName,
+        last_name: lastName || null,
+        email: emailAddr,
+        phone: phoneNo || null,
+        subject: subject || null,
+        message,
       });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const errMsg = [j?.error || res.statusText, j?.hint].filter(Boolean).join(" — ");
-        throw new Error(errMsg);
-      }
+      if (error) throw new Error(error.message);
       setSent({ ok: true });
       setFirstName("");
       setLastName("");

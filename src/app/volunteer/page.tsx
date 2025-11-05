@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { CalendarDays, Clock, HeartHandshake } from "lucide-react";
+import { sendEmail } from "@/lib/email";
 
 type VolunteerEntry = {
   id: string;
@@ -54,20 +55,44 @@ export default function VolunteerPage() {
       }
     } catch {}
     try {
-      const res = await fetch('/api/volunteer/bookings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, date, session, role, note, user_id }),
-      });
-      const j = await res.json().catch(() => ({} as any));
-      if (!res.ok) {
-        const msg = j?.error || 'Failed to save volunteer booking';
-        alert(msg);
+      const { getSupabaseBrowserClient } = await import("@/lib/supabase/client");
+      const supabase = getSupabaseBrowserClient();
+      const payload = {
+        name,
+        email,
+        phone,
+        date,
+        session,
+        role,
+        note: note || null,
+        user_id,
+      } as const;
+      const { data: ins, error } = await supabase.from("Volunteer Bookings").insert(payload).select("id").single();
+      if (error) {
+        alert(error.message);
         return;
       }
-      setSavedId(String(j?.booking?.id ?? ''));
+      setSavedId(String(ins?.id ?? ""));
       alert('Thank you! Your volunteer interest is noted.');
-      // lightweight reset
+      try {
+        await sendEmail({
+          to: email.trim(),
+          subject: "Volunteer request received",
+          text: `Dear ${name}, thank you for volunteering on ${date} (${session}) for ${role}. We will reach out if anything else is needed.`,
+          html: `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0f172a;line-height:1.6">
+            <h2 style="margin:0 0 8px">Volunteer Request Received</h2>
+            <p>Dear ${name || "Devotee"},</p>
+            <p>Thank you for submitting your interest to volunteer. Here are your details:</p>
+            <ul>
+              <li><strong>Date:</strong> ${date}</li>
+              <li><strong>Session:</strong> ${session}</li>
+              <li><strong>Preferred Role:</strong> ${role}</li>
+            </ul>
+            <p>We appreciate your seva. Our team will get in touch if any further details are required.</p>
+            <p>Swamiye Saranam Ayyappa</p>
+          </div>`,
+        });
+      } catch {}
       setDate("");
       setSession("Morning");
       setNote("");

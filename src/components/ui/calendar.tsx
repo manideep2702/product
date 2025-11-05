@@ -71,7 +71,9 @@ export function Calendar({ selected, onSelect, disabled, fromDate, toDate, class
     return disabled?.(d) ?? false;
   };
 
-  const monthLabel = new Date(year, month, 1).toLocaleString(undefined, { month: "long", year: "numeric" });
+  const monthLabel = new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(
+    new Date(year, month, 1)
+  );
   const isSameDay = (a?: Date, b?: Date) => !!a && !!b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
   return (

@@ -5,7 +5,7 @@ import { BookOpenText, Maximize2, Download } from "lucide-react";
 import FlipBook from "@/components/devotional/FlipBook";
 
 export default function DevotionalPage() {
-  const pdfSrc = "/devotional/pdf";
+  const pdfSrc = "/ayya.pdf";
 
   return (
     <RequireAuth>
